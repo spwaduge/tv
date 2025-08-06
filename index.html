@@ -2,59 +2,48 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Widevine DASH Player</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.6.0/shaka-player.compiled.js"></script>
+  <title>Shaka Player - Widevine</title>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.3.5/dist/shaka-player.compiled.min.js"></script>
 </head>
-<body>
-  <h2>DRM Protected Video Player</h2>
-  <video id="video" width="720" controls autoplay></video>
+<body style="background:black; margin:0; display:flex; justify-content:center; align-items:center; height:100vh;">
+  <video id="video" controls autoplay style="width:90%; max-width:960px; background:#000;"></video>
 
   <script>
     async function initPlayer() {
-      const manifestUri = 'https://iptv.umadiyajanani.com/viu/viu.mpd?id=4';
-      const licenseServer = 'https://iptv.umadiyajanani.com/viu/licence/?id=4&expires=1754287785';
-
       const video = document.getElementById('video');
       const player = new shaka.Player(video);
 
-      // Attach player to window for easy debugging
-      window.player = player;
-
-      // Listen for errors
-      player.addEventListener('error', e => console.error('Error:', e.detail));
-
-      // Configure DRM
+      // Configure DRM settings
       player.configure({
         drm: {
           servers: {
-            'com.widevine.alpha': licenseServer,
-          },
-          advanced: {
-            'com.widevine.alpha': {
-              videoRobustness: 'SW_SECURE_CRYPTO',
-              audioRobustness: 'SW_SECURE_CRYPTO',
-              serverCertificate: null,
-            },
-          },
-          clearKeys: {},
+            'com.widevine.alpha': 'https://iptv.umadiyajanani.com/viu/licence/?id=4&expires=1754287785'
+          }
         },
         streaming: {
           retryParameters: { maxAttempts: 3 },
-        },
-        requestFilter: function(type, request) {
-          if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
-            // Add User-Agent to license request
-            request.headers['User-Agent'] = 'Dalvik/2.1.0 (Linux; U; Android 0; 0 Build/0)';
-          }
+          startAtSegmentBoundary: true
         }
       });
 
-      // Try to load a manifest.
+      // Inject custom header into Widevine license request
+      player.getNetworkingEngine().registerRequestFilter((type, request) => {
+        if (type === shaka.net.NetworkingEngine.RequestType.LICENSE) {
+          request.headers['User-Agent'] = 'Dalvik/2.1.0 (Linux; U; Android 0; 0 Build/0)';
+        }
+      });
+
+      // Error handling
+      player.addEventListener('error', e => {
+        console.error('Error code', e.detail.code, 'object', e.detail);
+      });
+
       try {
-        await player.load(manifestUri);
-        console.log('Video loaded!');
-      } catch (e) {
-        console.error('Load error:', e);
+        // Load the manifest
+        await player.load('https://iptv.umadiyajanani.com/viu/viu.mpd?id=1');
+        console.log('The video has been loaded successfully!');
+      } catch (err) {
+        console.error('Failed to load the video', err);
       }
     }
 
